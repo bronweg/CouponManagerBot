@@ -53,6 +53,6 @@ def not_main():
 
 
 if __name__ == "__main__":
-    # main()
-    not_main()
+    main()
+    # not_main()
 

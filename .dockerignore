@@ -1,0 +1,4 @@
+.*
+venv*
+Dockerfile
+resources/coupons.json

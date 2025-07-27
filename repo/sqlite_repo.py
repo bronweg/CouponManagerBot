@@ -430,6 +430,19 @@ if __name__ == "__main__":
     repo = SQLiteCouponRepository({"db_path":"../resources/coupon_management.db","table_name":"coupons"})
     print(repo.get_available_summary())
 
+    db_connection = repo._db_connection
+    main_cursor = db_connection.cursor()
+
+    try:
+        main_cursor.execute(f"""
+            SELECT *
+            FROM {repo.table_name}
+        """)
+        print(main_cursor.fetchall())
+    finally:
+        main_cursor.close()
+
+
 
 
     # print(repo.reserve_coupons_by_bunch([(15.0, 2), (5.0, 1)], "BUNCH_B"))
