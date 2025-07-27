@@ -43,14 +43,14 @@ class SQLiteCouponRepository(AbstractCouponRepository):
         """
         cursor = self._db_connection.cursor()
         try:
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT denominal, COUNT(*) as amount
-                FROM ?
+                FROM {self.table_name}
                 WHERE status = ?
                     AND (expiration_date >= date('now') OR expiration_date IS NULL)
                 GROUP BY denominal
                 ORDER BY denominal ASC;
-            """, (self.table_name, CouponStatus.AVAILABLE.name,))
+            """, (CouponStatus.AVAILABLE.name,))
             return cursor.fetchall()
         finally:
             cursor.close()
@@ -72,15 +72,15 @@ class SQLiteCouponRepository(AbstractCouponRepository):
             all_reserved = []
             cursor.execute("BEGIN IMMEDIATE")
             for denominal, amount in denominal_requirements:
-                cursor.execute("""
+                cursor.execute(f"""
                     SELECT id, denominal 
-                    FROM ?
+                    FROM {self.table_name}
                     WHERE status = ?
                         AND (expiration_date >= date('now') OR expiration_date IS NULL)
                         AND denominal = ?
                     ORDER BY expiration_date ASC NULLS LAST
                     LIMIT ?
-                """, (self.table_name, CouponStatus.AVAILABLE.name, denominal, amount))
+                """, (CouponStatus.AVAILABLE.name, denominal, amount))
 
                 rows = cursor.fetchall()
 
@@ -89,11 +89,11 @@ class SQLiteCouponRepository(AbstractCouponRepository):
 
                 all_reserved.extend(rows)
 
-                cursor.executemany("""
-                    UPDATE ?
+                cursor.executemany(f"""
+                    UPDATE {self.table_name}
                     SET status = ?, bunch_id = ?, processing_date = datetime('now')
                     WHERE id = ?
-                """, [(self.table_name, CouponStatus.RESERVED.name, bunch_id, id_denominal[0]) for id_denominal in rows])
+                """, [(CouponStatus.RESERVED.name, bunch_id, id_denominal[0]) for id_denominal in rows])
 
             self._db_connection.commit()
             logger.debug(f"Reserved coupons: {all_reserved}")
@@ -123,11 +123,11 @@ class SQLiteCouponRepository(AbstractCouponRepository):
         try:
             cursor.execute("BEGIN IMMEDIATE")
 
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT status, processing_id 
-                FROM ?
+                FROM {self.table_name}
                 WHERE id = ?
-            """, (self.table_name, coupon_code,))
+            """, (coupon_code,))
 
             row = cursor.fetchone()
             if not row:
@@ -141,11 +141,11 @@ class SQLiteCouponRepository(AbstractCouponRepository):
                     f"Current coupon status: {coupon_status}, processing_id: {existing_processing_id}"
                 )
 
-            cursor.execute("""
-                UPDATE ?
+            cursor.execute(f"""
+                UPDATE {self.table_name}
                 SET processing_id = ?
                 WHERE id = ?
-            """, (self.table_name, processing_id, coupon_code))
+            """, (processing_id, coupon_code))
 
             self._db_connection.commit()
         except Exception as e:
@@ -176,11 +176,11 @@ class SQLiteCouponRepository(AbstractCouponRepository):
         try:
             cursor.execute("BEGIN IMMEDIATE")
 
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT status, processing_id 
-                FROM ?
+                FROM {self.table_name}
                 WHERE id = ?
-            """, (self.table_name, coupon_code,))
+            """, (coupon_code,))
 
             row = cursor.fetchone()
             if not row:
@@ -200,17 +200,17 @@ class SQLiteCouponRepository(AbstractCouponRepository):
                     logger.warning(f"Coupon {coupon_code} has no processing_id set, still processing status change.")
 
             if keep_info:
-                cursor.execute("""
-                    UPDATE ?
+                cursor.execute(f"""
+                    UPDATE {self.table_name}
                     SET status = ?, bunch_id = NULL
                     WHERE id = ?
-                """, (self.table_name, new_status.name, coupon_code))
+                """, (new_status.name, coupon_code))
             else:
-                cursor.execute("""
-                    UPDATE ?
+                cursor.execute(f"""
+                    UPDATE {self.table_name}
                     SET status = ?, bunch_id = NULL, processing_id = NULL, processing_date = NULL
                     WHERE id = ?
-                """, (self.table_name, new_status.name, coupon_code))
+                """, (new_status.name, coupon_code))
 
             self._db_connection.commit()
             return processing_id
@@ -240,11 +240,11 @@ class SQLiteCouponRepository(AbstractCouponRepository):
         try:
             cursor.execute("BEGIN IMMEDIATE")
 
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT id, status, processing_id 
-                FROM ?
+                FROM {self.table_name}
                 WHERE bunch_id = ?
-            """, (self.table_name, bunch_id))
+            """, (bunch_id,))
             rows = cursor.fetchall()
 
             id_idx = 0
@@ -275,17 +275,17 @@ class SQLiteCouponRepository(AbstractCouponRepository):
                 raise BadCouponStatusError(f"Coupons with bunch_id {bunch_id} have bad status: {bad_statuses}")
 
             if keep_info:
-                cursor.execute("""
-                    UPDATE ?
+                cursor.execute(f"""
+                    UPDATE {self.table_name}
                     SET status = ?, bunch_id = NULL
                     WHERE bunch_id = ?
-                """, (self.table_name, status.name, bunch_id,))
+                """, (status.name, bunch_id,))
             else:
-                cursor.execute("""
-                    UPDATE ?
+                cursor.execute(f"""
+                    UPDATE {self.table_name}
                     SET status = ?, bunch_id = NULL, processing_id = NULL, processing_date = NULL
                     WHERE bunch_id = ?
-                """, (self.table_name, status.name, bunch_id,))
+                """, (status.name, bunch_id,))
 
             self._db_connection.commit()
             return [coupon_in_bunch[processing_idx] for coupon_in_bunch in rows]
@@ -306,11 +306,11 @@ class SQLiteCouponRepository(AbstractCouponRepository):
         """
         cursor = self._db_connection.cursor()
         try:
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT processing_id 
-                FROM ?
+                FROM {self.table_name}
                 WHERE bunch_id = ?
-            """, (self.table_name, bunch_id))
+            """, ( bunch_id,))
 
             processing_ids = cursor.fetchall()
             return [pid[0] for pid in processing_ids]
@@ -325,13 +325,13 @@ class SQLiteCouponRepository(AbstractCouponRepository):
         """
         cursor = self._db_connection.cursor()
         try:
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT id 
-                FROM ?
+                FROM {self.table_name}
                 WHERE processing_id IS NOT NULL
                     AND status = ?
                     AND processing_date < datetime('now', '-1 day')
-            """, (self.table_name, CouponStatus.RESERVED.name))
+            """, (CouponStatus.RESERVED.name,))
 
             long_processing = cursor.fetchall()
             if long_processing:
@@ -351,20 +351,20 @@ class SQLiteCouponRepository(AbstractCouponRepository):
         cursor = self._db_connection.cursor()
 
         try:
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT id, status, bunch_id
-                FROM ?
+                FROM {self.table_name}
                 WHERE status != ?
                 AND (bunch_id IS NOT NULL)
-            """, (self.table_name, CouponStatus.RESERVED.name))
+            """, (CouponStatus.RESERVED.name,))
             bad_bunch_status = cursor.fetchall()
 
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT id, status, processing_id, processing_date
-                FROM ?
+                FROM {self.table_name}
                 WHERE status NOT IN (?, ?)
                 AND (processing_id IS NOT NULL OR processing_date IS NOT NULL)
-            """, (self.table_name, CouponStatus.RESERVED.name, CouponStatus.USED.name))
+            """, (CouponStatus.RESERVED.name, CouponStatus.USED.name))
             bad_processing_status = cursor.fetchall()
 
             if bad_bunch_status or bad_processing_status:
@@ -388,13 +388,13 @@ class SQLiteCouponRepository(AbstractCouponRepository):
         cursor = self._db_connection.cursor()
 
         try:
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT id 
-                FROM ?
+                FROM {self.table_name}
                 WHERE status = ?
                     AND processing_date < datetime('now', '-5 minutes')
                     AND processing_id IS NULL           
-            """, (self.table_name, CouponStatus.RESERVED.name))
+            """, (CouponStatus.RESERVED.name,))
 
             long_pre_processing = cursor.fetchall()
             if long_pre_processing:
@@ -413,13 +413,13 @@ class SQLiteCouponRepository(AbstractCouponRepository):
         """
         cursor = self._db_connection.cursor()
         try:
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT id, expiration_date 
-                FROM ?
+                FROM {self.table_name}
                 WHERE expiration_date IS NOT NULL
                     AND expiration_date <= date('now', '+7 days')
                     AND status = ?
-            """, (self.table_name, CouponStatus.AVAILABLE.name))
+            """, (CouponStatus.AVAILABLE.name,))
 
             return cursor.fetchall()
         finally:
@@ -427,12 +427,12 @@ class SQLiteCouponRepository(AbstractCouponRepository):
 
 
 if __name__ == "__main__":
-    repo = SQLiteCouponRepository()
+    repo = SQLiteCouponRepository({"db_path":"../resources/coupon_management.db","table_name":"coupons"})
     print(repo.get_available_summary())
 
 
 
-    print(repo.reserve_coupons_by_bunch([(15.0, 2), (5.0, 1)], "BUNCH_B"))
+    # print(repo.reserve_coupons_by_bunch([(15.0, 2), (5.0, 1)], "BUNCH_B"))
 
     # print(repo.sanity_unknown_processing())
     # print(repo.sanity_long_processing())
@@ -456,14 +456,14 @@ if __name__ == "__main__":
     # try:
     #
     #     main_cursor.executemany("""
-    #         UPDATE ?
+    #         UPDATE {repo.table_name}
     #         SET processing_id = ?
     #         WHERE id = ?
     #     """, [
-    #         (repo.table_name, '03364', '40622267576381828942'), (repo.table_name, '13504', '71565316757713559100'),
-    #         (repo.table_name, '22850', '25824193964951355004'), (repo.table_name, '55057', '71565719369792755570'),
-    #         (repo.table_name, '29812', '47645142442778242859'), (repo.table_name, '75737', '07078752209623024234'),
-    #         (repo.table_name, '40317', '84164051850976384485'), (repo.table_name, '27806', '70268469832712262468')
+    #         ('03364', '40622267576381828942'), ('13504', '71565316757713559100'),
+    #         ('22850', '25824193964951355004'), ('55057', '71565719369792755570'),
+    #         ('29812', '47645142442778242859'), ('75737', '07078752209623024234'),
+    #         ('40317', '84164051850976384485'), ('27806', '70268469832712262468')
     #     ])
     #     db_connection.commit()
     # finally:
