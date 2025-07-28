@@ -1,7 +1,7 @@
 import atexit
 import logging
 import sqlite3
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 from repo.abstract_repo import AbstractCouponRepository, CouponStatus
 from repo.db_exceptions import CouponUnavailableError, BadCouponStatusError, NonExistingCouponError
@@ -36,7 +36,7 @@ class SQLiteCouponRepository(AbstractCouponRepository):
             self._db_connection = None
 
 
-    def get_available_summary(self) -> List[Tuple[float, int]]:
+    def get_available_summary(self) -> List[Tuple[str, int]]:
         """ Returns a summary of available coupons grouped by denominal.
         Returns:
             List of tuples where each tuple contains (denominal, amount).
@@ -52,6 +52,49 @@ class SQLiteCouponRepository(AbstractCouponRepository):
                 ORDER BY denominal ASC;
             """, (CouponStatus.AVAILABLE.name,))
             return cursor.fetchall()
+        finally:
+            cursor.close()
+
+
+    def insert_eternal_coupons(self, coupons_json: Dict[str, List[str]]) -> int:
+        """ Inserts coupons into the repository.
+        Args:
+            coupons_json: A dictionary where keys are denominals and values are lists of coupon IDs.
+        Returns:
+            The number of coupons successfully inserted.
+        Raises:
+            ValueError: If the input format is incorrect or if any coupon ID is invalid.
+        """
+        cursor = self._db_connection.cursor()
+        try:
+            cursor.execute("BEGIN IMMEDIATE")
+            coupon_counter = 0
+            for denominal, coupon_list in coupons_json.items():
+                try :
+                    denominal = float(denominal)
+                except ValueError:
+                    raise ValueError(f"Invalid denominal value: {denominal}. It should be a number.")
+                if not isinstance(coupon_list, list):
+                    raise ValueError(f"Invalid input format for denominal {denominal} with coupons {coupon_list}")
+
+                for coupon_id in coupon_list:
+                    if not isinstance(coupon_id, str) or len(coupon_id) != 20 or not coupon_id.isdigit():
+                        raise ValueError(f"Invalid coupon ID: {coupon_id}")
+
+                    cursor.execute(f"""
+                        INSERT INTO {self.table_name} (id, denominal, expiration_date, status)
+                        VALUES (?, ?, ?, ?)
+                    """, (coupon_id, denominal, None, CouponStatus.AVAILABLE.name))
+                    coupon_counter += 1
+
+            self._db_connection.commit()
+            logger.info(f"All done! {coupon_counter} coupons inserted into the database.")
+            return coupon_counter
+
+        except Exception as e:
+            self._db_connection.rollback()
+            logger.error(f"An error occurred while inserting coupons: {e}")
+            raise e
         finally:
             cursor.close()
 

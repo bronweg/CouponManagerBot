@@ -1,6 +1,8 @@
 import asyncio
+import json
 import logging
 from io import BytesIO
+from json import JSONDecodeError
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import RetryAfter
@@ -28,6 +30,41 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     await context.bot.send_message(chat_id=chat_id, text=f"Total coupons available:\n{balance_summary}")
 
+
+async def json_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handles the /json command to add coupons in JSON format.
+    Args:
+        update: The update containing the command.
+        context: The context of the command, including bot data.
+    """
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+
+    logger.info(f"User {user_id} requested to add coupons in JSON format from chat {chat_id}.")
+
+    # Get the amount to pay as a float number from the command arguments and issue warning if not provided
+    try:
+        coupons_json = json.loads(context.args[0])
+    except (JSONDecodeError, IndexError):
+        logger.error(f"User {user_id} provided invalid JSON to add coupons: {context.args}")
+        await update.message.reply_text("Please provide a valid JSON with coupons.")
+        return
+
+    provider = context.application.bot_data["coupon_provider"]
+
+    try:
+        # Insert the coupons into the provider
+        inserted_count = provider.insert_eternal_coupons(coupons_json)
+        if inserted_count > 0:
+            await update.message.reply_text(f"Successfully added {inserted_count} coupons.")
+            logger.info(f"User {user_id} added {inserted_count} coupons from JSON in chat {chat_id}.")
+        else:
+            await update.message.reply_text("No coupons were added. Please check the JSON format.")
+            logger.warning(f"User {user_id} tried to add coupons but none were added in chat {chat_id}.")
+    except Exception as e:
+        logger.error(f"Error while adding coupons from JSON: {e}")
+        await update.message.reply_text("An error occurred while adding coupons. Please check the JSON format and try again.")
+        return
 
 
 async def issue_single_coupon(
