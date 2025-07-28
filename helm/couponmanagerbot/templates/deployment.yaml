@@ -52,6 +52,23 @@ spec:
           runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
           runAsUser: {{ .Values.securityContext.runAsUser }}
           runAsGroup: {{ .Values.securityContext.runAsGroup }}
+        # Add readiness and liveness probes
+        readinessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import socket; socket.create_connection(('api.telegram.org', 443), timeout=5)"
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        livenessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import socket; socket.create_connection(('api.telegram.org', 443), timeout=5)"
+          initialDelaySeconds: 60
+          periodSeconds: 60
       volumes:
       {{- if .Values.database.persistence.enabled }}
       - name: db-storage

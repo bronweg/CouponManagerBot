@@ -22,14 +22,9 @@ ENV ALLOWED_USER_IDS=""
 ENV COUPON_REPO_TYPE="sqlite"
 ENV COUPON_REPO_CONFIG='{"db_path":"resources/coupon_management.db","table_name":"coupons"}'
 
-ARG USERNAME=appuser
-ARG UID=1001
-ARG GROUPNAME=appgroup
-ARG GID=$UID
-
 # Create a non-root user for security (important for Kubernetes)
-RUN groupadd --gid $GID $GROUPNAME && \
-    useradd --uid $UID --gid $GID $USERNAME
+RUN groupadd --gid 1001 appgroup && \
+    useradd --uid 1001 --gid 1001 appuser
 
 # Change ownership of the app directory to the non-root user
 RUN chown -R appuser:appgroup /app
