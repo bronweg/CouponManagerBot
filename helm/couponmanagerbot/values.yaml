@@ -1,0 +1,45 @@
+replicaCount: 1
+
+image:
+  repository: "bronweg/couponmanagerbot"
+  pullPolicy: Always
+  tag: "latest"
+
+telegram:
+  botToken: ""
+  allowedUserIds: []
+
+database:
+  type: sqlite
+  config:
+    db_path: "/app/resources/coupon_management.db"
+    table_name: "coupons"
+  persistence:
+    enabled: true
+    storageClass: "microk8s-hostpath"
+    size: 1Gi
+    accessMode: ReadWriteOnce
+  init:
+    enabled: false
+    init_script: "/app/scripts/sqlite_db_init.py"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+
+podSecurityContext:
+  fsGroup: 1001

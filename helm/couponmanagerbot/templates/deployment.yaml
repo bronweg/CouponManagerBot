@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "couponmanagerbot.fullname" . }}
+  labels:
+    {{- include "couponmanagerbot.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "couponmanagerbot.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "couponmanagerbot.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- end }}
+      {{- if .Values.database.init.enabled }}
+      initContainers:
+      - name: db-init
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        command: ["python", "{{ .Values.database.init.init_script }}"]
+        envFrom:
+        - configMapRef:
+            name: {{ include "couponmanagerbot.fullname" . }}-database-config
+        volumeMounts:
+        - name: db-storage
+          mountPath: "{{ dir .Values.database.config.db_path }}"
+        securityContext:
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+      {{- end }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        envFrom:
+        - secretRef:
+            name: {{ include "couponmanagerbot.fullname" . }}-telegram-secret
+        - configMapRef:
+            name: {{ include "couponmanagerbot.fullname" . }}-database-config
+        volumeMounts:
+        - name: db-storage
+          mountPath: "{{ dir .Values.database.config.db_path }}"
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        securityContext:
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+      volumes:
+      {{- if .Values.database.persistence.enabled }}
+      - name: db-storage
+        persistentVolumeClaim:
+          claimName: {{ include "couponmanagerbot.fullname" . }}-db-pvc
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
