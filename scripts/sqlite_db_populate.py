@@ -3,7 +3,9 @@ import string
 from datetime import datetime, timedelta
 import random
 
-from scripts.db_init import DB_NAME, TABLE_NAME
+from scripts.sqlite_db_init import get_sqlite_credentials
+
+DB_NAME, TABLE_NAME = get_sqlite_credentials()
 
 
 def generate_coupon_id():

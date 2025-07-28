@@ -44,6 +44,18 @@ class AbstractCouponRepository(ABC):
         ... # pragma: no cover
 
     @abstractmethod
+    def insert_eternal_coupons(self, coupons_json: Dict[str, List[str]]) -> int:
+        """ Inserts coupons into the repository.
+        Args:
+            coupons_json: A dictionary where keys are denominals and values are lists of coupon IDs.
+        Returns:
+            The number of coupons successfully inserted.
+        Raises:
+            ValueError: If the input format is incorrect or if any coupon ID is invalid.
+        """
+        ... # pragma: no cover
+
+    @abstractmethod
     def reserve_coupons_by_bunch(self, denominal_requirements: List[Tuple[float, int]], bunch_id: str) \
             -> List[Tuple[str, float]]:
         """ Reserve coupons based on the provided denominal requirements and assign them to a bunch_id.
