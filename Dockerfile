@@ -1,5 +1,5 @@
 # Use Python Alpine for minimal size
-FROM python:3.12-alpine
+FROM python:3.12-slim
 
 # Set working directory
 WORKDIR /app
