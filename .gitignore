@@ -3,3 +3,5 @@
 /venv*
 /resources/coupon_management.db
 /resources/coupons.json
+**/__pycache__/
+*.pyc
