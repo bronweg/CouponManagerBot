@@ -44,7 +44,7 @@ async def json_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     # Get the amount to pay as a float number from the command arguments and issue warning if not provided
     try:
-        coupons_json = json.loads(context.args[0])
+        coupons_json = json.loads("".join(context.args))
     except (JSONDecodeError, IndexError):
         logger.error(f"User {user_id} provided invalid JSON to add coupons: {context.args}")
         await update.message.reply_text("Please provide a valid JSON with coupons.")

@@ -1,6 +1,6 @@
 import logging
 from io import BytesIO
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 
 from barcoder.generator import generate_barcode
 from combinator.core import get_coupons_combination
@@ -21,6 +21,17 @@ class CouponProvider:
             List of tuples where each tuple contains (denominal, amount).
         """
         return self.repo.get_available_summary()
+
+    def insert_eternal_coupons(self, coupons_json: Dict[str, List[str]]) -> int:
+        """ Inserts coupons into the repository.
+        Args:
+            coupons_json: A dictionary where keys are denominals and values are lists of coupon IDs.
+        Returns:
+            The number of coupons successfully inserted.
+        Raises:
+            ValueError: If the input format is incorrect or if any coupon ID is invalid.
+        """
+        return self.repo.insert_eternal_coupons(coupons_json)
 
     def get_coupons(self, amount_to_pay: int, bunch_id: str, more_tries: int = 3
                     ) -> Tuple[float, List[Tuple[str, BytesIO]]]:

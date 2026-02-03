@@ -1,5 +1,5 @@
 # Use Python Alpine for minimal size
-FROM python:3.12-alpine
+FROM python:3.12-slim
 
 # Set working directory
 WORKDIR /app
@@ -23,11 +23,14 @@ ENV COUPON_REPO_TYPE="sqlite"
 ENV COUPON_REPO_CONFIG='{"db_path":"resources/coupon_management.db","table_name":"coupons"}'
 
 # Create a non-root user for security (important for Kubernetes)
-RUN addgroup -g 1001 -S appgroup && \
-    adduser -u 1001 -S appuser -G appgroup
+RUN groupadd --gid 1001 appgroup && \
+    useradd --uid 1001 --gid 1001 appuser
 
 # Change ownership of the app directory to the non-root user
 RUN chown -R appuser:appgroup /app
+
+# Set python path
+ENV PYTHONPATH="/app"
 
 # Switch to non-root user
 USER appuser
