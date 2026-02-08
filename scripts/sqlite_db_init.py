@@ -21,6 +21,7 @@ def initialize_db(db_name: str, table_name: str):
                 CHECK (length(id) = 20 AND id GLOB '[0-9]*'),  -- 20-digit numeric string
             denominal REAL NOT NULL,
             expiration_date DATE,
+            created_at DATE,
             status TEXT NOT NULL CHECK (status IN ('AVAILABLE', 'RESERVED', 'USED')),
             bunch_id TEXT,
             processing_id TEXT,
@@ -31,7 +32,7 @@ def initialize_db(db_name: str, table_name: str):
     # Index to speed up finding available coupons by denominal and expiration
     cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_coupons_avail_denominal_exp
-        ON coupons(denominal, expiration_date)
+        ON coupons(denominal, expiration_date, created_at)
         WHERE status = 'AVAILABLE';
     """)
 

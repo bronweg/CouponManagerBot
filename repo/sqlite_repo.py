@@ -1,6 +1,7 @@
 import atexit
 import logging
 import sqlite3
+from datetime import date
 from typing import List, Tuple, Dict
 
 from repo.abstract_repo import AbstractCouponRepository, CouponStatus
@@ -56,7 +57,7 @@ class SQLiteCouponRepository(AbstractCouponRepository):
             cursor.close()
 
 
-    def insert_eternal_coupons(self, coupons_json: Dict[str, List[str]]) -> int:
+    def insert_eternal_coupons(self, coupons_json: Dict[str, Dict[str, List[str]]]) -> int:
         """ Inserts coupons into the repository.
         Args:
             coupons_json: A dictionary where keys are denominals and values are lists of coupon IDs.
@@ -69,23 +70,29 @@ class SQLiteCouponRepository(AbstractCouponRepository):
         try:
             cursor.execute("BEGIN IMMEDIATE")
             coupon_counter = 0
-            for denominal, coupon_list in coupons_json.items():
-                try :
-                    denominal = float(denominal)
+            for created_at, coupons_dict in coupons_json.items():
+                try:
+                    date.fromisoformat(created_at)
                 except ValueError:
-                    raise ValueError(f"Invalid denominal value: {denominal}. It should be a number.")
-                if not isinstance(coupon_list, list):
-                    raise ValueError(f"Invalid input format for denominal {denominal} with coupons {coupon_list}")
+                    raise ValueError(f"Invalid date format for created_at: {created_at}. It should be in ISO format (YYYY-MM-DD).")
 
-                for coupon_id in coupon_list:
-                    if not isinstance(coupon_id, str) or len(coupon_id) != 20 or not coupon_id.isdigit():
-                        raise ValueError(f"Invalid coupon ID: {coupon_id}")
+                for denominal, coupon_list in coupons_dict.items():
+                    try :
+                        denominal = float(denominal)
+                    except ValueError:
+                        raise ValueError(f"Invalid denominal value: {denominal}. It should be a number.")
+                    if not isinstance(coupon_list, list):
+                        raise ValueError(f"Invalid input format for denominal {denominal} with coupons {coupon_list}")
 
-                    cursor.execute(f"""
-                        INSERT INTO {self.table_name} (id, denominal, expiration_date, status)
-                        VALUES (?, ?, ?, ?)
-                    """, (coupon_id, denominal, None, CouponStatus.AVAILABLE.name))
-                    coupon_counter += 1
+                    for coupon_id in coupon_list:
+                        if not isinstance(coupon_id, str) or len(coupon_id) != 20 or not coupon_id.isdigit():
+                            raise ValueError(f"Invalid coupon ID: {coupon_id}")
+
+                        cursor.execute(f"""
+                            INSERT INTO {self.table_name} (id, denominal, expiration_date, created_at, status)
+                            VALUES (?, ?, ?, ?, ?)
+                        """, (coupon_id, denominal, None, created_at, CouponStatus.AVAILABLE.name))
+                        coupon_counter += 1
 
             self._db_connection.commit()
             logger.info(f"All done! {coupon_counter} coupons inserted into the database.")
@@ -121,7 +128,7 @@ class SQLiteCouponRepository(AbstractCouponRepository):
                     WHERE status = ?
                         AND (expiration_date >= date('now') OR expiration_date IS NULL)
                         AND denominal = ?
-                    ORDER BY expiration_date ASC NULLS LAST
+                    ORDER BY expiration_date ASC NULLS LAST, created_at ASC  NULLS FIRST
                     LIMIT ?
                 """, (CouponStatus.AVAILABLE.name, denominal, amount))
 
@@ -481,11 +488,25 @@ if __name__ == "__main__":
             SELECT *
             FROM {repo.table_name}
         """)
-        print(main_cursor.fetchall())
+
+        # print(main_cursor.fetchall())
+
+        all_coupons = main_cursor.fetchall()
+
+        print(all_coupons)
+        coupons_json = {}
+        for coupon in all_coupons:
+            created_at = coupon[3]
+            coupons_by_creation = coupons_json.setdefault(created_at, {})
+            coupons_by_denominal = coupons_by_creation.setdefault(str(coupon[1]), [])
+            coupons_by_denominal.append(coupon[0])
+
+        import json
+        coupons_json_str = json.dumps(coupons_json, indent=4)
+        print(coupons_json_str)
+
     finally:
         main_cursor.close()
-
-
 
 
     # print(repo.reserve_coupons_by_bunch([(15.0, 2), (5.0, 1)], "BUNCH_B"))
