@@ -69,6 +69,32 @@ spec:
             - "import socket; socket.create_connection(('api.telegram.org', 443), timeout=5)"
           initialDelaySeconds: 60
           periodSeconds: 60
+      {{- if .Values.sqlite_web.enabled }}
+      - name: sqlite-web
+        image: "{{ .Values.sqlite_web.image.repository }}:{{ .Values.sqlite_web.image.tag }}"
+        imagePullPolicy: Always
+        args:
+        - "--host"
+        - "0.0.0.0"
+        - "--port"
+        - "8080"
+        - "--no-browser"
+        - "--debug"
+        - "{{ .Values.database.config.db_path }}"
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        volumeMounts:
+        - name: db-storage
+          mountPath: "{{ dir .Values.database.config.db_path }}"
+        resources:
+          {{- toYaml .Values.sqlite_web.resources | nindent 10 }}
+        securityContext:
+          runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+      {{- end }}
       volumes:
       {{- if .Values.database.persistence.enabled }}
       - name: db-storage

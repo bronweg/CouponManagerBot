@@ -23,6 +23,19 @@ database:
     enabled: false
     init_script: "/app/scripts/sqlite_db_init.py"
 
+sqlite_web:
+  enabled: true
+  image:
+    repository: "bronweg/sqlite-web"
+    tag: "latest"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
 resources:
   limits:
     cpu: 500m
