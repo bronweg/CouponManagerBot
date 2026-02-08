@@ -44,7 +44,7 @@ class AbstractCouponRepository(ABC):
         ... # pragma: no cover
 
     @abstractmethod
-    def insert_eternal_coupons(self, coupons_json: Dict[str, List[str]]) -> int:
+    def insert_eternal_coupons(self, coupons_json: Dict[str, Dict[str, List[str]]]) -> int:
         """ Inserts coupons into the repository.
         Args:
             coupons_json: A dictionary where keys are denominals and values are lists of coupon IDs.

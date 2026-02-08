@@ -29,16 +29,21 @@ def populate_coupons_in_action(n=100):
     for i in range(n):
         coupon_id = generate_coupon_id()
         denominal = random.choice(denominals)
-        status = random.choices(statuses, weights=[0.5, 0.3, 0.2])[0]
+
+
         expiration_date_random = (today + timedelta(days=random.randint(-10, 60))).date().isoformat()
         expiration_date = random.choices([expiration_date_random, None], weights=[0.6, 0.4])[0]
+
+        created_at = (today - timedelta(days=random.randint(0, 30))).date().isoformat()
+
+        status = random.choices(statuses, weights=[0.5, 0.3, 0.2])[0]
         bunch_id = random.choice(bunch_ids if status == 'RESERVED' else [None])
         processing_id = generate_processing_id() if status == 'RESERVED' else None
 
         cursor.execute(f"""
-            INSERT INTO {TABLE_NAME} (id, denominal, expiration_date, status, bunch_id, processing_id)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (coupon_id, denominal, expiration_date, status, bunch_id, processing_id))
+            INSERT INTO {TABLE_NAME} (id, denominal, expiration_date, created_at, status, bunch_id, processing_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (coupon_id, denominal, expiration_date, created_at, status, bunch_id, processing_id))
 
     conn.commit()
     conn.close()
@@ -56,13 +61,16 @@ def populate_coupons_from_scratch(n=100):
         coupon_id = generate_coupon_id()
         denominal = random.choice(denominals)
         status = 'AVAILABLE'
+
         expiration_date_random = (today + timedelta(days=random.randint(-10, 60))).date().isoformat()
         expiration_date = random.choices([expiration_date_random, None], weights=[0.6, 0.4])[0]
 
+        created_at = (today - timedelta(days=random.randint(0, 30))).date().isoformat()
+
         cursor.execute(f"""
-                INSERT INTO {TABLE_NAME} (id, denominal, expiration_date, status)
-                VALUES (?, ?, ?, ?)
-            """, (coupon_id, denominal, expiration_date, status))
+                INSERT INTO {TABLE_NAME} (id, denominal, expiration_date, created_at, status)
+                VALUES (?, ?, ?, ?, ?)
+            """, (coupon_id, denominal, expiration_date, created_at, status))
 
     conn.commit()
     conn.close()
